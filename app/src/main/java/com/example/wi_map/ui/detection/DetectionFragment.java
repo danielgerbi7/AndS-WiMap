@@ -1,4 +1,4 @@
-package com.example.wi_map.ui.home;
+package com.example.wi_map.ui.detection;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -10,22 +10,22 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.example.wi_map.databinding.FragmentHomeBinding;
+import com.example.wi_map.databinding.FragmentDetectionBinding;
 
-public class HomeFragment extends Fragment {
+public class DetectionFragment extends Fragment {
 
-    private FragmentHomeBinding binding;
+    private FragmentDetectionBinding binding;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        HomeViewModel homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
+        DetectionViewModel detectionViewModel =
+                new ViewModelProvider(this).get(DetectionViewModel.class);
 
-        binding = FragmentHomeBinding.inflate(inflater, container, false);
+        binding = FragmentDetectionBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        final TextView textView = binding.textHome;
-        homeViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+        //final TextView textView = binding.textDetection;
+        //detectionViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
         return root;
     }
 
