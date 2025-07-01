@@ -12,4 +12,5 @@
     <string name="_45_dbm">-45 dBm</string>
     <string name="bssid">BSSID</string>
     <string name="ssid">SSID</string>
+    <string name="m">-- m</string>
 </resources>

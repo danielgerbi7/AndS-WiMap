@@ -16,6 +16,7 @@ playServicesMaps = "19.2.0"
 playServicesLocation = "21.3.0"
 playServicesMapsVersion = "18.1.0"
 secretsGradlePlugin = "2.0.1"
+preference = "1.2.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -34,6 +35,7 @@ play-services-maps = { group = "com.google.android.gms", name = "play-services-m
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 play-services-maps-v1810 = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMapsVersion" }
 secrets-gradle-plugin = { module = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin:secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
+preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 

@@ -23,10 +23,10 @@
             android:textStyle="bold"/>
 
         <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_bssid"
+            android:id="@+id/tv_distance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/bssid"
+            android:text="@string/m"
             android:textSize="14sp"/>
 
         <com.google.android.material.textview.MaterialTextView

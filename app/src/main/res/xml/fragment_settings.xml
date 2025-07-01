@@ -1,0 +1,59 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:title="Scan Settings">
+
+        <SwitchPreferenceCompat
+            android:key="pref_auto_scan"
+            android:title="Auto-scan"
+            android:summary="Scan every interval automatically"/>
+
+        <ListPreference
+            android:key="pref_scan_interval"
+            android:title="Scan Interval"
+            android:entries="@array/scan_interval_entries"
+            android:entryValues="@array/scan_interval_values"
+            android:defaultValue="5000"
+            android:dependency="pref_auto_scan"
+            android:summary="%s milliseconds"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Display Units">
+
+        <ListPreference
+            android:key="pref_distance_unit"
+            android:title="Distance Unit"
+            android:entries="@array/distance_unit_entries"
+            android:entryValues="@array/distance_unit_values"
+            android:defaultValue="m"
+            android:summary="%s"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Notifications &amp; Auto-Connect">
+
+        <SwitchPreferenceCompat
+            android:key="pref_notify_threshold"
+            android:title="Notify on Threshold"
+            android:summary="Notify when signal stronger than threshold"/>
+
+        <ListPreference
+            android:key="pref_notify_level"
+            android:title="Threshold dBm"
+            android:entries="@array/threshold_entries"
+            android:entryValues="@array/threshold_values"
+            android:defaultValue="-60"
+            android:dependency="pref_notify_threshold"
+            android:summary="%s"/>
+
+        <SwitchPreferenceCompat
+            android:key="pref_auto_connect"
+            android:title="Auto-connect"
+            android:summary="Automatically connect to best available network"/>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

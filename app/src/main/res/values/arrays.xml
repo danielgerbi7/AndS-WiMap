@@ -1,0 +1,36 @@
+<resources>
+    <string-array name="scan_interval_entries">
+        <item>5 seconds</item>
+        <item>10 seconds</item>
+        <item>30 seconds</item>
+        <item>Manual</item>
+    </string-array>
+    <string-array name="scan_interval_values">
+        <item>5000</item>
+        <item>10000</item>
+        <item>30000</item>
+        <item>0</item>
+    </string-array>
+
+    <string-array name="distance_unit_entries">
+        <item>m (meters)</item>
+        <item>ft (feet)</item>
+    </string-array>
+    <string-array name="distance_unit_values">
+        <item>m</item>
+        <item>ft</item>
+    </string-array>
+
+    <string-array name="threshold_entries">
+        <item>-50 dBm</item>
+        <item>-60 dBm</item>
+        <item>-70 dBm</item>
+        <item>-80 dBm</item>
+    </string-array>
+    <string-array name="threshold_values">
+        <item>-50</item>
+        <item>-60</item>
+        <item>-70</item>
+        <item>-80</item>
+    </string-array>
+</resources>

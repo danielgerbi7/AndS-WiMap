@@ -27,5 +27,5 @@
         android:id="@+id/navigation_settings"
         android:name="com.example.wi_map.ui.settings.SettingsFragment"
         android:label="@string/settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@xml/fragment_settings" />
 </navigation>
