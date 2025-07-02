@@ -13,4 +13,10 @@
     <string name="bssid">BSSID</string>
     <string name="ssid">SSID</string>
     <string name="m">-- m</string>
+    <string name="_0_m">0 m</string>
+    <string name="_14_23">14:23</string>
+    <string name="_55_dbm">-55 dBm</string>
+    <string name="_25_m">25 m</string>
+    <string name="myhomenet">MyHomeNet</string>
+    <string name="clear">Clear</string>
 </resources>

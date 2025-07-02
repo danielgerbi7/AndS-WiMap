@@ -8,9 +8,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiNetworkSpecifier;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -36,6 +42,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.wi_map.R;
 import com.example.wi_map.adapters.NetworkAdapter;
+import com.example.wi_map.data.MappingStorage;
+import com.example.wi_map.models.HistoryEntry;
 import com.example.wi_map.models.WifiEntry;
 import com.example.wi_map.interfaces.INetworkClickListener;
 import com.example.wi_map.databinding.FragmentMappingBinding;
@@ -57,7 +65,10 @@ import java.util.List;
 import java.util.Objects;
 
 public class MappingFragment extends Fragment
-        implements OnMapReadyCallback, INetworkClickListener, MenuProvider,SharedPreferences.OnSharedPreferenceChangeListener {
+        implements OnMapReadyCallback,
+                   INetworkClickListener,
+                   MenuProvider,
+                   SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String CHANNEL_ID = "wifi_alerts";
 
@@ -65,12 +76,12 @@ public class MappingFragment extends Fragment
     private GoogleMap mMap;
     private NetworkAdapter adapter;
     private final List<WifiEntry> networks = new ArrayList<>();
+    private List<ScanResult> lastScanResults = new ArrayList<>();
     private WifiManager wifiManager;
     private FusedLocationProviderClient locationClient;
     private LatLng lastKnownLatLng = null;
-
+    private MappingStorage storage;
     private boolean finePermissionGranted = false;
-
     private final HashMap<String, LatLng> fingerprintMap = new HashMap<>();
     private final HashMap<WifiEntry, Marker> markerMap = new HashMap<>();
 
@@ -81,13 +92,7 @@ public class MappingFragment extends Fragment
     private boolean autoConnect;
 
     private final Handler scanHandler = new Handler(Looper.getMainLooper());
-    private final Runnable scanRunnable = new Runnable() {
-        @Override
-        public void run() {
-            doScan();
-            scanHandler.postDelayed(this, scanIntervalMs);
-        }
-    };
+    private final Runnable scanRunnable = this::doScan;
 
     private final ActivityResultLauncher<String[]> requestPermissionLauncher =
             registerForActivityResult(
@@ -111,6 +116,7 @@ public class MappingFragment extends Fragment
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         createNotificationChannel();
+        storage = new MappingStorage(requireContext());
     }
 
     @Override
@@ -118,6 +124,11 @@ public class MappingFragment extends Fragment
                              ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentMappingBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        SharedPreferences prefs = PreferenceManager
+                .getDefaultSharedPreferences(requireContext());
+        prefs.registerOnSharedPreferenceChangeListener(this);
+        updateSettingsFromPrefs(prefs);
 
         requireActivity().addMenuProvider(this,
                 getViewLifecycleOwner(),
@@ -136,85 +147,106 @@ public class MappingFragment extends Fragment
         }
         binding.rvNetworks.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
-        adapter = new NetworkAdapter(networks, this);
+        adapter = new NetworkAdapter(networks, this, distanceUnit);
         binding.rvNetworks.setAdapter(adapter);
 
         return root;
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private void doScan() {
+        if (!checkCoarsePermission())
+            return;
+        locationClient.getLastLocation().addOnSuccessListener(loc -> {
+            if (loc == null)
+                return;
+            lastKnownLatLng = new LatLng(loc.getLatitude(), loc.getLongitude());
+            List<ScanResult> results = startWifiScan();
+            lastScanResults = results;
+            networks.clear();
+            markerMap.clear();
+            for (ScanResult sr : results) {
+                WifiEntry entry = buildEntry(sr);
+                networks.add(entry);
+                notifyIfNeeded(sr);
+            }
+            adapter.notifyDataSetChanged();
+            updateMapMarkers();
 
+            if (autoConnect && !results.isEmpty()) {
+                ScanResult strongest = results.get(0);
+                boolean isOpen = !strongest.capabilities.contains("WEP")
+                        && !strongest.capabilities.contains("WPA");
+
+                if (isOpen) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        connectToOpenNetworkQ(strongest);
+                    } else {
+                        connectToOpenNetworkLegacy(strongest);
+                    }
+                } else {
+                    Toast.makeText(requireContext(),
+                            "This network is secured — can’t connect automatically.",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            if (scanIntervalMs>0)
+                scanHandler.postDelayed(scanRunnable, scanIntervalMs);
+        });
+    }
+
+    private boolean checkCoarsePermission() {
         if (ActivityCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(
-                    new String[]{ Manifest.permission.ACCESS_COARSE_LOCATION }
-            );
-            return;
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION});
+            return false;
         }
-
-        locationClient.getLastLocation().addOnSuccessListener(loc -> {
-            if (loc == null) {
-                return;
-            }
-
-            lastKnownLatLng = new LatLng(loc.getLatitude(), loc.getLongitude());
-
-            wifiManager.startScan();
-            List<ScanResult> results = wifiManager.getScanResults();
-            results.sort(Comparator.comparingInt(r -> -r.level));
-
-            networks.clear();
-            markerMap.clear();
-            for (int i = 0; i < Math.min(results.size(), 10); i++) {
-                ScanResult sr = results.get(i);
-
-                fingerprintMap.putIfAbsent(sr.BSSID, lastKnownLatLng);
-
-                LatLng fpLoc = fingerprintMap.get(sr.BSSID);
-                float distanceM = 0f;
-                if (fpLoc != null) {
-                    float[] dist = new float[1];
-                    Location.distanceBetween(
-                            lastKnownLatLng.latitude,
-                            lastKnownLatLng.longitude,
-                            fpLoc.latitude,
-                            fpLoc.longitude,
-                            dist
-                    );
-                    distanceM = dist[0];
-                }
-                if ("ft".equals(distanceUnit)) {
-                    distanceM *= 3.28084f;
-                }
-                WifiEntry entry = new WifiEntry(
-                        sr.SSID,
-                        sr.level,
-                        distanceM,
-                        sr.BSSID
-                );
-                networks.add(entry);
-                if (notifyThreshold && sr.level >= thresholdDbm) {
-                    sendNotification("Strong network: " + sr.SSID,
-                            "Signal " + sr.level + " dBm");
-                }
-                if (autoConnect) {
-                    List<WifiConfiguration> configs = wifiManager.getConfiguredNetworks();
-                    String quotedSsid = "\"" + sr.SSID + "\"";
-                    for (WifiConfiguration cfg : configs) {
-                        if (quotedSsid.equals(cfg.SSID)) {
-                            wifiManager.enableNetwork(cfg.networkId, true);
-                            break;
-                        }
-                    }
-                }
-            }
-            adapter.notifyDataSetChanged();
-            updateMapMarkers();
-        });
+        return true;
     }
 
+    private List<ScanResult> startWifiScan() {
+        wifiManager.startScan();
+        @SuppressLint("MissingPermission") List<ScanResult> results = wifiManager.getScanResults();
+        results.sort(Comparator.comparingInt(r -> -r.level));
+        return results.subList(0, Math.min(results.size(), 10));
+    }
 
+    private WifiEntry buildEntry(ScanResult sr) {
+        fingerprintMap.putIfAbsent(sr.BSSID, lastKnownLatLng);
+        float dist = calculateDistance(sr);
+        if ("ft".equals(distanceUnit)) dist *= 3.28084f;
+
+        return new WifiEntry(sr.SSID, sr.level, dist, sr.BSSID);
+    }
+
+    private float calculateDistance(ScanResult sr) {
+        LatLng fp = fingerprintMap.get(sr.BSSID);
+        if (fp==null || lastKnownLatLng==null)
+            return 0f;
+        float[] d = new float[1];
+        Location.distanceBetween(
+                lastKnownLatLng.latitude,
+                lastKnownLatLng.longitude,
+                fp.latitude,
+                fp.longitude,
+                d
+        );
+        return d[0];
+    }
+
+    private void notifyIfNeeded(ScanResult sr) {
+        if (!notifyThreshold || sr.level < thresholdDbm) return;
+        sendNotification("Strong network: " + sr.SSID,
+                "Signal " + sr.level + " dBm");
+        Toast.makeText(requireContext(),
+                        "Threshold passed on " + sr.SSID +
+                                " (" + sr.level + " dBm)",
+                        Toast.LENGTH_SHORT)
+                .show();
+    }
     private void updateMapMarkers() {
         if (mMap == null || lastKnownLatLng == null) return;
 
@@ -244,13 +276,118 @@ public class MappingFragment extends Fragment
 
     @Override
     public void onNetworkClick(WifiEntry entry) {
-        Marker marker = markerMap.get(entry);
-        if (marker != null) {
-            LatLng pos = marker.getPosition();
-            mMap.animateCamera(CameraUpdateFactory
-                    .newLatLngZoom(pos, 18f));
-            marker.showInfoWindow();
+        LatLng pos = fingerprintMap.get(entry.fingerprintLocation);
+        if (pos != null) {
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 18f));
         }
+
+        ScanResult sr = null;
+        for (ScanResult candidate : lastScanResults) {
+            if (candidate.BSSID.equals(entry.fingerprintLocation)) {
+                sr = candidate;
+                break;
+            }
+        }
+        if (sr == null) {
+            Toast.makeText(requireContext(),
+                            "Network not found in last scan", Toast.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        boolean isOpen = !sr.capabilities.contains("WEP")
+                && !sr.capabilities.contains("WPA");
+        if (!isOpen) {
+            Toast.makeText(requireContext(),
+                    "This network is secured — can’t connect automatically.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            connectToOpenNetworkQ(sr);
+        } else {
+            connectToOpenNetworkLegacy(sr);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void connectToOpenNetworkLegacy(ScanResult sr) {
+        String ssid = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ssid = Objects.requireNonNull(sr.getWifiSsid()).toString();
+        }
+
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"" + ssid + "\"";
+        config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+
+        int netId = wifiManager.addNetwork(config);
+        if (netId != -1) {
+            wifiManager.disconnect();
+            wifiManager.enableNetwork(netId, true);
+            wifiManager.reconnect();
+            onConnectedToOpenNetwork(sr);
+        } else {
+            Toast.makeText(requireContext(),
+                    "Failed to add network " + ssid,
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @androidx.annotation.RequiresApi(29)
+    private void connectToOpenNetworkQ(ScanResult sr) {
+        WifiNetworkSpecifier spec = new WifiNetworkSpecifier.Builder()
+                .setSsid(sr.SSID)
+                .build();
+
+        NetworkRequest req = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .setNetworkSpecifier(spec)
+                .build();
+
+        ConnectivityManager cm =
+                (ConnectivityManager) requireContext()
+                        .getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        cm.requestNetwork(req, new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(@NonNull Network network) {
+                cm.bindProcessToNetwork(network);
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(),
+                            "Connected to " + sr.SSID,
+                            Toast.LENGTH_SHORT).show();
+                    onConnectedToOpenNetwork(sr);
+                });
+            }
+            @Override
+            public void onUnavailable() {
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(),
+                                "Failed to connect to " + sr.SSID,
+                                Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private void onConnectedToOpenNetwork(ScanResult sr) {
+        float dist = calculateDistance(sr);
+
+        HistoryEntry h = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            h = new HistoryEntry(
+                    System.currentTimeMillis(),
+                    Objects.requireNonNull(sr.getWifiSsid()).toString(),
+                    sr.level,
+                    dist,
+                    distanceUnit,
+                    lastKnownLatLng.latitude,
+                    lastKnownLatLng.longitude
+            );
+        }
+        storage.addEntry(h);
+        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -273,13 +410,7 @@ public class MappingFragment extends Fragment
             return;
         }
 
-        if (ActivityCompat.checkSelfPermission(requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(requireContext(),
-                        Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mMap.setMyLocationEnabled(true);
-        }
-
+        finePermissionGranted = true;
         setupMapAndScan();
     }
 
@@ -303,8 +434,6 @@ public class MappingFragment extends Fragment
     }
 
 
-
-
     @Override
     public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
         menuInflater.inflate(R.menu.fragment_mapping_menu, menu);
@@ -326,8 +455,6 @@ public class MappingFragment extends Fragment
                 .getDefaultSharedPreferences(requireContext());
 
         prefs.registerOnSharedPreferenceChangeListener(this);
-        updateSettingsFromPrefs(prefs);
-        doScan();
         updateSettingsFromPrefs(prefs);
     }
 
@@ -371,32 +498,41 @@ public class MappingFragment extends Fragment
         nm.notify((int) System.currentTimeMillis(), builder.build());
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     @Override
     public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
-        switch(Objects.requireNonNull(key)) {
+        switch (Objects.requireNonNull(key)) {
             case "pref_notify_threshold":
             case "pref_notify_level":
                 notifyThreshold = prefs.getBoolean("pref_notify_threshold", false);
-                thresholdDbm  = Integer.parseInt(
+                thresholdDbm = Integer.parseInt(
                         prefs.getString("pref_notify_level", "-60"));
                 doScan();
                 Toast.makeText(requireContext(),
                         "Notify threshold set to " + thresholdDbm + " dBm",
                         Toast.LENGTH_SHORT).show();
                 break;
-            case "pref_auto_scan":
-            case "pref_scan_interval":
+
             case "pref_distance_unit":
-            case "pref_auto_connect":
+                distanceUnit = prefs.getString("pref_distance_unit", "m");
+                adapter.notifyDataSetChanged();
+                break;
+
+            default:
                 updateSettingsFromPrefs(prefs);
                 break;
         }
     }
 
+
+
     private void updateSettingsFromPrefs(SharedPreferences prefs) {
         boolean autoScan = prefs.getBoolean("pref_auto_scan", false);
         scanIntervalMs = Integer.parseInt(prefs.getString("pref_scan_interval", "5000"));
         distanceUnit = prefs.getString("pref_distance_unit", "m");
+        if(adapter != null) {
+            adapter.setDistanceUnit(distanceUnit);
+        }
         notifyThreshold = prefs.getBoolean("pref_notify_threshold", false);
         thresholdDbm = Integer.parseInt(prefs.getString("pref_notify_level", "-60"));
         autoConnect = prefs.getBoolean("pref_auto_connect", false);

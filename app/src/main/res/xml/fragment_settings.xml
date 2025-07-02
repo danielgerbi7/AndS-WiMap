@@ -15,7 +15,7 @@
             android:entryValues="@array/scan_interval_values"
             android:defaultValue="5000"
             android:dependency="pref_auto_scan"
-            android:summary="%s milliseconds"/>
+            android:summary="%s "/>
 
     </PreferenceCategory>
 
