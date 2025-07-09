@@ -25,7 +25,8 @@ public class HistoryStorage {
     public List<HistoryEntry> load() {
         String json = prefs.getString(KEY_HISTORY, null);
         if (json == null) return new ArrayList<>();
-        Type listType = new TypeToken<List<HistoryEntry>>(){}.getType();
+        Type listType = new TypeToken<List<HistoryEntry>>() {
+        }.getType();
         return gson.fromJson(json, listType);
     }
 

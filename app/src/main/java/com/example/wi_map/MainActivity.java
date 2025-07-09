@@ -25,16 +25,10 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView navView = binding.navView;
 
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.navigation_mapping,
-                R.id.navigation_detection,
-                R.id.navigation_history,
-                R.id.navigation_settings
-        ).build();
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_mapping, R.id.navigation_detection, R.id.navigation_history, R.id.navigation_settings).build();
 
-        NavHostFragment navHostFragment = (NavHostFragment)
-                getSupportFragmentManager()
-                        .findFragmentById(R.id.nav_host_fragment_activity_main);
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
+        assert navHostFragment != null;
         NavController navController = navHostFragment.getNavController();
 
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
@@ -44,9 +38,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onSupportNavigateUp() {
-        NavHostFragment navHostFragment = (NavHostFragment)
-                getSupportFragmentManager()
-                        .findFragmentById(R.id.nav_host_fragment_activity_main);
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
+        assert navHostFragment != null;
         NavController navController = navHostFragment.getNavController();
         return navController.navigateUp() || super.onSupportNavigateUp();
     }

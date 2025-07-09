@@ -15,13 +15,13 @@ import com.google.android.material.textview.MaterialTextView;
 
 import java.util.List;
 
-public class NetworkAdapter
-        extends RecyclerView.Adapter<NetworkAdapter.ViewHolder> {
+public class NetworkAdapter extends RecyclerView.Adapter<NetworkAdapter.ViewHolder> {
 
     private final List<WifiEntry> data;
     private final INetworkClickListener listener;
     private String distanceUnit;
-    public NetworkAdapter(List<WifiEntry> data, INetworkClickListener listener,String distanceUnit) {
+
+    public NetworkAdapter(List<WifiEntry> data, INetworkClickListener listener, String distanceUnit) {
         this.data = data;
         this.listener = listener;
         this.distanceUnit = distanceUnit;
@@ -34,21 +34,15 @@ public class NetworkAdapter
 
         public ViewHolder(View itemView) {
             super(itemView);
-            ssid     = itemView.findViewById(R.id.tv_ssid);
+            ssid = itemView.findViewById(R.id.tv_ssid);
             distance = itemView.findViewById(R.id.tv_distance);
-            rssi     = itemView.findViewById(R.id.tv_rssi);
+            rssi = itemView.findViewById(R.id.tv_rssi);
         }
 
         @SuppressLint("SetTextI18n")
-        public void bind(WifiEntry net,
-                         INetworkClickListener l,
-                         String distanceUnit) {
+        public void bind(WifiEntry net, INetworkClickListener l, String distanceUnit) {
             ssid.setText(net.ssid);
-            distance.setText(
-                    Math.round(net.distanceM)
-                            + " "
-                            + (distanceUnit.equals("ft") ? "ft" : "m")
-            );
+            distance.setText(Math.round(net.distanceM) + " " + (distanceUnit.equals("ft") ? "ft" : "m"));
             rssi.setText(net.level + " dBm");
             itemView.setOnClickListener(v -> l.onNetworkClick(net));
         }
@@ -57,8 +51,7 @@ public class NetworkAdapter
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_network, parent, false);
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_network, parent, false);
         return new ViewHolder(v);
     }
 

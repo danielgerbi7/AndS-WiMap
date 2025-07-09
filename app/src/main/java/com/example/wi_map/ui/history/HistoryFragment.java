@@ -19,10 +19,7 @@ import com.example.wi_map.R;
 import com.example.wi_map.adapters.HistoryAdapter;
 import com.example.wi_map.data.HistoryStorage;
 import com.example.wi_map.databinding.FragmentHistoryBinding;
-import com.example.wi_map.models.HistoryEntry;
 import com.google.android.material.snackbar.Snackbar;
-
-import java.util.List;
 
 public class HistoryFragment extends Fragment {
     private FragmentHistoryBinding binding;
@@ -30,41 +27,34 @@ public class HistoryFragment extends Fragment {
     private HistoryStorage storage;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             ViewGroup container,
-                             Bundle savedInstanceState) {
-        binding = FragmentHistoryBinding.inflate(inflater, container, false);
+    public View onCreateView(@NonNull LayoutInflater inf, ViewGroup ct, Bundle bs) {
+        binding = FragmentHistoryBinding.inflate(inf, ct, false);
         storage = new HistoryStorage(requireContext());
         return binding.getRoot();
     }
 
     @Override
-    public void onViewCreated(@NonNull View view,
-                              @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    public void onViewCreated(@NonNull View v, @Nullable Bundle bs) {
+        super.onViewCreated(v, bs);
 
-        binding.rvHistory.setLayoutManager(
-                new LinearLayoutManager(requireContext()));
         adapter = new HistoryAdapter();
+        binding.rvHistory.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvHistory.setAdapter(adapter);
 
-        loadAndShow();
+        loadList();
 
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
-            public void onCreateMenu(@NonNull Menu menu,
-                                     @NonNull MenuInflater inflater) {
+            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
                 inflater.inflate(R.menu.menu_history, menu);
             }
+
             @Override
             public boolean onMenuItemSelected(@NonNull MenuItem item) {
                 if (item.getItemId() == R.id.action_clear_history) {
                     storage.clear();
-                    loadAndShow();
-                    Snackbar.make(binding.getRoot(),
-                                    "History cleared",
-                                    Snackbar.LENGTH_SHORT)
-                            .show();
+                    loadList();
+                    Snackbar.make(binding.getRoot(), R.string.history_cleared, Snackbar.LENGTH_SHORT).show();
                     return true;
                 }
                 return false;
@@ -72,11 +62,16 @@ public class HistoryFragment extends Fragment {
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
     }
 
-
-    private void loadAndShow() {
-        List<HistoryEntry> list = storage.load();
-        adapter.submitList(list);
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadList();
     }
+
+    private void loadList() {
+        adapter.submitList(storage.load());
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
