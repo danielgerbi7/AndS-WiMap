@@ -133,8 +133,8 @@ Wi-Map is an Android application that lets you:
 
 **4. Settings Screen**
 
-| <img src="images/settings.jpeg" alt="Settings Screen - Light Mode" width="300"/> |
-|----------------------------------------------------------------------------------|
+| <img src="images/settings.jpg" alt="Settings Screen - Light Mode" width="300"/> |
+|---------------------------------------------------------------------------------|
 
 ## Author
 [Daniel Gerbi](https://github.com/danielgerbi7)
