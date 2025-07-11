@@ -30,6 +30,6 @@
     <string name="go_to_mapping">Go to Mapping</string>
     <string name="refresh">Refresh</string>
     <string name="lat_lon">Lat: ---, Lon: ---</string>
-    <string name="map_current_location">Map Current Location</string>
+    <string name="detect_position">Detect Position</string>
     <string name="clear_mapped_networks">Clear mapped networks</string>
 </resources>

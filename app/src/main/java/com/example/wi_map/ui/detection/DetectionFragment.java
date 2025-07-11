@@ -87,7 +87,7 @@ public class DetectionFragment extends Fragment {
                 if (item.getItemId() == R.id.action_refresh) {
                     performScan();
                     return true;
-                } else if (item.getItemId() == R.id.action_map_location) {
+                } else if (item.getItemId() == R.id.action_detect_position) {
                     mapCurrentLocation();
                     return true;
                 } else if (item.getItemId() == R.id.action_clear_mapped) {
@@ -235,7 +235,7 @@ public class DetectionFragment extends Fragment {
         if (hasValidPosition) {
             positionText = getString(R.string.detection_estimate, String.format(Locale.getDefault(), "%.5f", estimatedLat), String.format(Locale.getDefault(), "%.5f", estimatedLng), matchedNetworks);
         } else {
-            positionText = "No position detected. Found " + scanResults.size() + " networks, but " + matchedNetworks + " are mapped. Use Map Current Location' to add more fingerprints.";
+            positionText = "No position detected. Found " + scanResults.size() + " networks, but " + matchedNetworks + " are mapped. Use 'Detect Position' to add more fingerprints.";
         }
 
         binding.tvEstimatedPosition.setText(positionText);

@@ -7,8 +7,8 @@
         android:title="@string/refresh"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_map_location"
-        android:title="@string/map_current_location"
+        android:id="@+id/action_detect_position"
+        android:title="@string/detect_position"
         app:showAsAction="never" />
 
     <item
