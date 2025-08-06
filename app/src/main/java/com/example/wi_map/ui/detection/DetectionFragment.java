@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
@@ -84,11 +85,8 @@ public class DetectionFragment extends Fragment {
 
             @Override
             public boolean onMenuItemSelected(@NonNull MenuItem item) {
-                if (item.getItemId() == R.id.action_refresh) {
+                if (item.getItemId() == R.id.action_refresh_detection || item.getItemId() == R.id.action_detect_position) {
                     performScan();
-                    return true;
-                } else if (item.getItemId() == R.id.action_detect_position) {
-                    mapCurrentLocation();
                     return true;
                 } else if (item.getItemId() == R.id.action_clear_mapped) {
                     fingerprintStorage.clearAll();
@@ -123,54 +121,6 @@ public class DetectionFragment extends Fragment {
 
         binding.btnGoMapping.setOnClickListener(v -> NavHostFragment.findNavController(this).navigate(R.id.navigation_mapping));
 
-        showFingerprintCount();
-    }
-
-    @SuppressWarnings("deprecation")
-    private void mapCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQ_PERM_FINE_LOCATION);
-            return;
-        }
-
-        LocationManager lm = (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
-        Location loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        if (loc != null) {
-            saveCurrentWifiFingerprints(loc.getLatitude(), loc.getLongitude());
-        } else {
-            showManualLocationDialog();
-        }
-    }
-
-    private void showManualLocationDialog() {
-        AlertDialog.Builder b = new AlertDialog.Builder(requireContext());
-        EditText input = new EditText(requireContext());
-        input.setHint("lat,lon (e.g., 32.0853,34.7818)");
-        b.setView(input).setTitle("Enter Current Location").setPositiveButton("Save", (d, w) -> {
-            String[] p = input.getText().toString().split(",");
-            try {
-                double lat = Double.parseDouble(p[0].trim());
-                double lon = Double.parseDouble(p[1].trim());
-                saveCurrentWifiFingerprints(lat, lon);
-            } catch (Exception e) {
-                Toast.makeText(requireContext(), "Invalid format", Toast.LENGTH_SHORT).show();
-            }
-        }).setNegativeButton("Cancel", null).show();
-    }
-
-    @SuppressLint("MissingPermission")
-    private void saveCurrentWifiFingerprints(double latitude, double longitude) {
-        wifiManager.startScan();
-        List<ScanResult> results = wifiManager.getScanResults();
-        int saved = 0;
-        for (ScanResult sr : results) {
-            if (sr.level > -110) {
-                WifiEntry e = new WifiEntry(sr.SSID, sr.level, 0f, sr.BSSID, latitude, longitude);
-                fingerprintStorage.save(e);
-                saved++;
-            }
-        }
-        Toast.makeText(requireContext(), "Saved " + saved + " fingerprints", Toast.LENGTH_LONG).show();
         showFingerprintCount();
     }
 

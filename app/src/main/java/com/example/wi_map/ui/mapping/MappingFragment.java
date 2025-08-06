@@ -44,6 +44,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.wi_map.R;
 import com.example.wi_map.adapters.NetworkAdapter;
+import com.example.wi_map.data.FingerprintStorage;
 import com.example.wi_map.models.WifiEntry;
 import com.example.wi_map.interfaces.INetworkClickListener;
 import com.example.wi_map.databinding.FragmentMappingBinding;
@@ -85,6 +86,7 @@ public class MappingFragment extends Fragment implements OnMapReadyCallback, INe
     private boolean notifyThreshold;
     private int thresholdDbm;
     private boolean autoConnect;
+    private FingerprintStorage fingerprintStorage;
 
     private final Handler scanHandler = new Handler(Looper.getMainLooper());
     private final Runnable scanRunnable = this::doScan;
@@ -128,6 +130,7 @@ public class MappingFragment extends Fragment implements OnMapReadyCallback, INe
         binding.rvNetworks.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new NetworkAdapter(networks, this, distanceUnit);
         binding.rvNetworks.setAdapter(adapter);
+        fingerprintStorage = new FingerprintStorage(requireContext());
 
         return root;
     }
@@ -145,6 +148,7 @@ public class MappingFragment extends Fragment implements OnMapReadyCallback, INe
             for (ScanResult sr : results) {
                 WifiEntry entry = buildEntry(sr);
                 networks.add(entry);
+                fingerprintStorage.save(entry);
                 notifyIfNeeded(sr);
             }
             adapter.notifyDataSetChanged();
